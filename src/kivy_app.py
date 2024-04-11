@@ -140,6 +140,3 @@ class ChessBoardApp(App):
         self.message_label.font_size = value
         self.bot_button.font_size = value
         self.toggle_turn_button.font_size = value  # Ensure the toggle button also scales
-
-if __name__ == "__main__":
-    ChessBoardApp().run()
