@@ -5,23 +5,32 @@ from kivy.uix.image import Image
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
+from kivy.uix.label import Label
 from kivy.metrics import dp, sp
 from kivy.properties import NumericProperty
+from kivy.core.window import Window
 from kivy.uix.popup import Popup
 from kivy.uix.filechooser import FileChooserIconView
 import cairosvg
+from image_to_board import ImageToBoard
+from engine import PychessBot  # Assuming this function is correctly imported
 
 class ChessBoardApp(App):
     font_size = NumericProperty(sp(18))  # Initial font size in scale-independent pixels
 
     def build(self):
         self.board = chess.Board()
+        self.bot = PychessBot('src/stockfish/stockfish-ubuntu-x86-64-avx2')
         self.filepath = ''  # Initialize the filepath variable
         layout = BoxLayout(orientation='vertical')
 
         # Chess board image
         self.img = Image(keep_ratio=True, allow_stretch=True)
         layout.add_widget(self.img)
+
+        # Message display label
+        self.message_label = Label(text='No image loaded', size_hint=(1, 0.1), font_size=self.font_size)
+        layout.add_widget(self.message_label)
 
         # Input for moves
         self.input = TextInput(hint_text='Enter move (e.g., e2e4)', multiline=False, size_hint=(1, 0.1), font_size=self.font_size)
@@ -34,16 +43,26 @@ class ChessBoardApp(App):
         layout.add_widget(self.button)
 
         # Button to load image file
-        load_button = Button(text='Load Image', size_hint=(1, 0.1), font_size=self.font_size)
-        load_button.bind(on_press=self.show_load)
-        layout.add_widget(load_button)
+        self.load_button = Button(text='Load Image', size_hint=(1, 0.1), font_size=self.font_size)
+        self.load_button.bind(on_press=self.show_load)
+        layout.add_widget(self.load_button)
+
+        # Button to ask the bot for a move
+        self.bot_button = Button(text='Ask Bot for Move', size_hint=(1, 0.1), font_size=self.font_size)
+        self.bot_button.bind(on_press=self.ask_bot)
+        layout.add_widget(self.bot_button)
 
         # Bind the font size property to window size changes for dynamic scaling
         self.bind(font_size=self.update_font_size)
         self.update_board()
         return layout
 
-    def update_board(self):
+    def update_board(self, fen=None):
+        if fen:
+            try:
+                self.board.set_fen(fen)
+            except ValueError:
+                self.message_label.text = "Invalid FEN string from image."
         svg_data = chess.svg.board(self.board).encode('utf-8')
         png_data = cairosvg.svg2png(bytestring=svg_data)
         with open("board.png", "wb") as png_file:
@@ -61,25 +80,50 @@ class ChessBoardApp(App):
         except ValueError:
             self.input.text = 'Invalid move!'  # Provide feedback on invalid input
 
+    def ask_bot(self, instance):
+        fen = self.board.fen()
+        best_move = self.bot(fen)  # Call the PychessBot with the current FEN
+        self.message_label.text = f"Bot suggests move: {best_move}"  # Display the bot's suggested move
+        print("Bot move:", best_move)  # Optional: Debug print to the console
+
     def on_enter(self, instance):
-        self.make_move(None)  # Use the make_move function directly, with instance as None
+        self.make_move(None)
 
     def show_load(self, instance):
-        content = FileChooserIconView()
-        content.bind(on_selection=self.load_image)
+        content = BoxLayout(orientation='vertical')
+        filechooser = FileChooserIconView()
+        content.add_widget(filechooser)
+
+        button_layout = BoxLayout(size_hint_y=None, height='50sp')
+        load_btn = Button(text='Load')
+        load_btn.bind(on_release=lambda x: self.load_image(filechooser, popup))
+        button_layout.add_widget(load_btn)
+
+        cancel_btn = Button(text='Cancel')
+        cancel_btn.bind(on_release=lambda x: popup.dismiss())
+        button_layout.add_widget(cancel_btn)
+
+        content.add_widget(button_layout)
         popup = Popup(title="Select image", content=content, size_hint=(0.9, 0.9))
         popup.open()
 
-    def load_image(self, filechooser):
+    def load_image(self, filechooser, popup):
         if filechooser.selection:
             self.filepath = filechooser.selection[0]
-            print("Selected file:", self.filepath)  # Debug print to verify file path
+            fen = ImageToBoard(self.filepath)()
+            if fen:
+                self.update_board(fen)
+                self.message_label.text = f"Image {self.filepath} has been loaded and board updated."
+            else:
+                self.message_label.text = "No valid chess board found in the image."
+        popup.dismiss()
 
     def update_font_size(self, instance, value):
-        # Update the font size of text input and all buttons based on window size
         self.input.font_size = value
         self.button.font_size = value
         self.load_button.font_size = value
+        self.message_label.font_size = value
+        self.bot_button.font_size = value  # Ensure the bot button also scales
 
 if __name__ == "__main__":
     ChessBoardApp().run()
