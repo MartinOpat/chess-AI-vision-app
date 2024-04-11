@@ -9,17 +9,18 @@ class ImageToBoard:
         self.path_to_image = path_to_image
 
     def __call__(self, us=W):
-        return get_fen_from_image(self.path_to_image, black_view=us==B)
+        img = Image.open(self.path_to_image)
+        return get_fen_from_image(img, black_view=us==B)
     
 
-# IMAGE_PATH = 'src/test/pretty-board.png'
-# IMAGE_PATH = 'src/board_to_fen/test_images/test_image2.jpeg'
-IMAGE_PATH = 'src/board_to_fen/test_images/no_edges.png'
+# # IMAGE_PATH = 'src/test/pretty-board.png'
+# # IMAGE_PATH = 'src/board_to_fen/test_images/test_image2.jpeg'
+# IMAGE_PATH = 'src/board_to_fen/test_images/no_edges.png'
 
-# print(get_fen_from_image(IMAGE_PATH))
+# # print(get_fen_from_image(IMAGE_PATH))
 
 
-img = Image.open(IMAGE_PATH)
-print("HERE", img)
+# img = Image.open(IMAGE_PATH)
+# print("HERE", img)
 
-print(get_fen_from_image(img))
+# print(get_fen_from_image(img))
