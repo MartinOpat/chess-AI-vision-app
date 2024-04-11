@@ -6,6 +6,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.togglebutton import ToggleButton
 from kivy.metrics import dp, sp
 from kivy.properties import NumericProperty
 from kivy.core.window import Window
@@ -48,9 +49,14 @@ class ChessBoardApp(App):
         layout.add_widget(self.load_button)
 
         # Button to ask the bot for a move
-        self.bot_button = Button(text='Ask Bot for Move', size_hint=(1, 0.1), font_size=self.font_size)
+        self.bot_button = Button(text='Ask Bot for Move (takes up to 3s)', size_hint=(1, 0.1), font_size=self.font_size)
         self.bot_button.bind(on_press=self.ask_bot)
         layout.add_widget(self.bot_button)
+
+        # Toggle button to switch turns
+        self.toggle_turn_button = ToggleButton(text='Toggle Turn', size_hint=(1, 0.1), font_size=self.font_size)
+        self.toggle_turn_button.bind(on_press=self.toggle_turn)
+        layout.add_widget(self.toggle_turn_button)
 
         # Bind the font size property to window size changes for dynamic scaling
         self.bind(font_size=self.update_font_size)
@@ -84,7 +90,16 @@ class ChessBoardApp(App):
         fen = self.board.fen()
         best_move = self.bot(fen)  # Call the PychessBot with the current FEN
         self.message_label.text = f"Bot suggests move: {best_move}"  # Display the bot's suggested move
-        print("Bot move:", best_move)  # Optional: Debug print to the console
+
+    def toggle_turn(self, instance):
+        # Toggle whose turn it is
+        if ' w ' in self.board.fen():
+            new_fen = self.board.fen().replace(' w ', ' b ')
+        else:
+            new_fen = self.board.fen().replace(' b ', ' w ')
+        self.board.set_fen(new_fen)
+        self.update_board()  # Update the board to reflect the change
+        self.message_label.text = "Turn toggled."  # Update message label
 
     def on_enter(self, instance):
         self.make_move(None)
@@ -123,7 +138,8 @@ class ChessBoardApp(App):
         self.button.font_size = value
         self.load_button.font_size = value
         self.message_label.font_size = value
-        self.bot_button.font_size = value  # Ensure the bot button also scales
+        self.bot_button.font_size = value
+        self.toggle_turn_button.font_size = value  # Ensure the toggle button also scales
 
 if __name__ == "__main__":
     ChessBoardApp().run()
