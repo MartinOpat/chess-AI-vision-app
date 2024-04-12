@@ -16,7 +16,11 @@ class ImageToBoard:
         self.path_to_image = path_to_image
 
     def __call__(self, us=W):
-        img = Image.open(self.path_to_image)
+        try:
+            img = Image.open(self.path_to_image)
+        except:
+            print("Error opening image")
+            return None
         return get_fen_from_image(img, black_view=us==B)
     
 

@@ -52,9 +52,17 @@ class ChessBoardApp(App):
         self.bot_button.bind(on_press=self.ask_bot)
         layout.add_widget(self.bot_button)
 
-        self.toggle_turn_button = Button(text='Toggle Turn', size_hint=(1, 0.1), font_size=self.font_size)
+        button_layout = BoxLayout(size_hint=(1, 0.1))  # Container for toggle and new button
+        self.toggle_turn_button = Button(text='Toggle Turn', size_hint=(1, 1), font_size=self.font_size)
         self.toggle_turn_button.bind(on_press=self.toggle_turn)
-        layout.add_widget(self.toggle_turn_button)
+        button_layout.add_widget(self.toggle_turn_button)
+
+        self.us = 1  # White by default
+        self.us_button = Button(text='Switch to Black View', size_hint=(1, 1), font_size=self.font_size)
+        self.us_button.bind(on_press=self.switch_us)
+        button_layout.add_widget(self.us_button)
+        layout.add_widget(button_layout)
+
 
         self.update_board()
         return layout
@@ -105,6 +113,22 @@ class ChessBoardApp(App):
         self.update_board()  # Update the board to reflect the change
         self.message_label.text = "Turn toggled."  # Update message label
 
+    def switch_us(self, instance):
+        self.us = 1 - self.us
+        if self.us == 1:
+            self.us_button.text = 'Switch to Black View'
+        else:
+            self.us_button.text = 'Switch to White View'
+
+        if self.filepath:
+            fen = ImageToBoard(self.filepath)(us=self.us)
+            if fen:
+                self.update_board(fen)
+                self.message_label.text = f"Image {self.filepath} has been loaded and board updated."
+            else:
+                self.message_label.text = "No valid chess board found in the image."
+            self.update_board()
+
     def on_enter(self, instance):
         self.make_move(None)
 
@@ -129,7 +153,7 @@ class ChessBoardApp(App):
     def load_image(self, filechooser, popup):
         if filechooser.selection:
             self.filepath = filechooser.selection[0]
-            fen = ImageToBoard(self.filepath)()
+            fen = ImageToBoard(self.filepath)(us=self.us)
             if fen:
                 self.update_board(fen)
                 self.message_label.text = f"Image {self.filepath} has been loaded and board updated."
@@ -149,4 +173,5 @@ class ChessBoardApp(App):
         self.message_label.font_size = value
         self.bot_button.font_size = value
         self.toggle_turn_button.font_size = value
+        self.us_button.font_size = value
 
