@@ -17,9 +17,10 @@ class ChessBotClass(ABC):
 class PychessBot(ChessBotClass):
     def __init__(self, engine_path: str):
         self.engine = chess.engine.SimpleEngine.popen_uci(engine_path)
+        self.board = chess.Board()
 
     def __call__(self, board_fen: str) -> chess.Move:
-        board = chess.Board(board_fen)
-        result = self.engine.play(board, chess.engine.Limit(time=3))
+        self.board = chess.Board(board_fen)
+        result = self.engine.play(self.board, chess.engine.Limit(time=3))
         return result.move
 

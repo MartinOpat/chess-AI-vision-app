@@ -6,7 +6,6 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.uix.togglebutton import ToggleButton
 from kivy.metrics import dp, sp
 from kivy.properties import NumericProperty
 from kivy.core.window import Window
@@ -14,54 +13,59 @@ from kivy.uix.popup import Popup
 from kivy.uix.filechooser import FileChooserIconView
 import cairosvg
 from image_to_board import ImageToBoard
-from engine import PychessBot  # Assuming this function is correctly imported
+from engine import PychessBot
+import os
+from time import sleep
+import signal
 
 class ChessBoardApp(App):
     font_size = NumericProperty(sp(18))  # Initial font size in scale-independent pixels
 
     def build(self):
+        self.bind(font_size=self.update_font_size)  # Ensure the binding is at app level, not window
+        Window.bind(on_request_close=self.on_request_close)  # Bind closing event
+
         self.board = chess.Board()
         self.bot = PychessBot('src/stockfish/stockfish-ubuntu-x86-64-avx2')
-        self.filepath = ''  # Initialize the filepath variable
+        self.filepath = ''
         layout = BoxLayout(orientation='vertical')
 
-        # Chess board image
         self.img = Image(keep_ratio=True, allow_stretch=True)
         layout.add_widget(self.img)
 
-        # Message display label
         self.message_label = Label(text='No image loaded', size_hint=(1, 0.1), font_size=self.font_size)
         layout.add_widget(self.message_label)
 
-        # Input for moves
         self.input = TextInput(hint_text='Enter move (e.g., e2e4)', multiline=False, size_hint=(1, 0.1), font_size=self.font_size)
         self.input.bind(on_text_validate=self.on_enter)
         layout.add_widget(self.input)
 
-        # Button to submit move
         self.button = Button(text='Make Move', size_hint=(1, 0.1), font_size=self.font_size)
         self.button.bind(on_press=self.make_move)
         layout.add_widget(self.button)
 
-        # Button to load image file
         self.load_button = Button(text='Load Image', size_hint=(1, 0.1), font_size=self.font_size)
         self.load_button.bind(on_press=self.show_load)
         layout.add_widget(self.load_button)
 
-        # Button to ask the bot for a move
-        self.bot_button = Button(text='Ask Bot for Move (takes up to 3s)', size_hint=(1, 0.1), font_size=self.font_size)
+        self.bot_button = Button(text='Ask Bot for Move', size_hint=(1, 0.1), font_size=self.font_size)
         self.bot_button.bind(on_press=self.ask_bot)
         layout.add_widget(self.bot_button)
 
-        # Toggle button to switch turns
-        self.toggle_turn_button = ToggleButton(text='Toggle Turn', size_hint=(1, 0.1), font_size=self.font_size)
+        self.toggle_turn_button = Button(text='Toggle Turn', size_hint=(1, 0.1), font_size=self.font_size)
         self.toggle_turn_button.bind(on_press=self.toggle_turn)
         layout.add_widget(self.toggle_turn_button)
 
-        # Bind the font size property to window size changes for dynamic scaling
-        self.bind(font_size=self.update_font_size)
         self.update_board()
         return layout
+    
+    def on_start(self):
+        Window.bind(size=self.adjust_font_size)
+
+    def on_request_close(self, *args):
+        self.stop()  # Cleanly stop the application
+        self.bot.engine.quit()
+        return True
 
     def update_board(self, fen=None):
         if fen:
@@ -133,10 +137,16 @@ class ChessBoardApp(App):
                 self.message_label.text = "No valid chess board found in the image."
         popup.dismiss()
 
+    def adjust_font_size(self, instance, value):
+        new_size = sp(18) + (Window.width - 500) / 100
+        self.font_size = new_size
+
     def update_font_size(self, instance, value):
+        # Update all widgets' font sizes
         self.input.font_size = value
         self.button.font_size = value
         self.load_button.font_size = value
         self.message_label.font_size = value
         self.bot_button.font_size = value
-        self.toggle_turn_button.font_size = value  # Ensure the toggle button also scales
+        self.toggle_turn_button.font_size = value
+
